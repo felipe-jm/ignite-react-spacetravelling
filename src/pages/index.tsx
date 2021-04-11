@@ -2,16 +2,20 @@ import { GetStaticProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 
+import { useState } from 'react';
+
 import Prismic from '@prismicio/client';
 
 import { format } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
 
-import { getPrismicClient } from 'services/prismic';
-
 import { FiCalendar, FiUser } from 'react-icons/fi';
 
-import commonStyles from 'styles/common.module.scss';
+import { getPrismicClient } from '../services/prismic';
+
+import Header from '../components/Header';
+
+import commonStyles from '../styles/common.module.scss';
 import styles from './home.module.scss';
 
 interface Post {
@@ -34,22 +38,72 @@ interface HomeProps {
 }
 
 export default function Home({ postsPagination }: HomeProps) {
+  const [posts, setPosts] = useState<Post[]>(postsPagination.results || []);
+  const [nextPage, setNextPage] = useState<null | string>(
+    postsPagination.next_page
+  );
+  const [loading, setLoading] = useState(false);
+
+  async function loadMorePosts() {
+    try {
+      if (!postsPagination.next_page) return;
+
+      setLoading(true);
+
+      const response = await fetch(postsPagination.next_page);
+
+      const parsedResponse = await response.json();
+
+      const formattedResults = parsedResponse.results.map(post => ({
+        uid: post.uid,
+        first_publication_date: format(
+          new Date(post.first_publication_date),
+          'd MMM yyyy',
+          {
+            locale: ptBR,
+          }
+        ),
+        data: {
+          title: post.data.title,
+          subtitle: post.data.subtitle,
+          author: post.data.author,
+        },
+      }));
+
+      setPosts([...posts, ...formattedResults]);
+      setNextPage(parsedResponse.next_page);
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <>
       <Head>
         <title>Posts | Spacetravelling</title>
       </Head>
 
+      <Header />
+
       <main className={commonStyles.container}>
         <div className={styles.posts}>
-          {postsPagination.results.map(post => (
+          {posts.map(post => (
             <Link key={post.uid} href={`/post/${post.uid}`}>
               <a>
                 <strong>{post.data.title}</strong>
                 <span>{post.data.subtitle}</span>
                 <div>
                   <time>
-                    <FiCalendar /> {post.first_publication_date}
+                    <FiCalendar />{' '}
+                    {format(
+                      new Date(post.first_publication_date),
+                      'd MMM yyyy',
+                      {
+                        locale: ptBR,
+                      }
+                    )}
                   </time>
                   <span>
                     <FiUser /> {post.data.author}
@@ -60,9 +114,15 @@ export default function Home({ postsPagination }: HomeProps) {
           ))}
         </div>
 
-        <button type="button" className={styles.loadMore}>
-          Carregar mais posts
-        </button>
+        {!!nextPage && (
+          <button
+            type="button"
+            className={styles.loadMore}
+            onClick={loadMorePosts}
+          >
+            {loading ? 'Carregando' : 'Carregar mais posts'}
+          </button>
+        )}
       </main>
     </>
   );
@@ -81,7 +141,7 @@ export const getStaticProps: GetStaticProps = async () => {
         'posts.banner',
         'posts.content',
       ],
-      pageSize: 5,
+      pageSize: 1,
     }
   );
 
@@ -89,13 +149,7 @@ export const getStaticProps: GetStaticProps = async () => {
 
   const posts: Post[] = postsResponse.results.map(post => ({
     uid: post.uid,
-    first_publication_date: format(
-      new Date(post.first_publication_date),
-      'd MMM yyyy',
-      {
-        locale: ptBR,
-      }
-    ),
+    first_publication_date: post.first_publication_date,
     data: {
       title: post.data.title,
       subtitle: post.data.subtitle,

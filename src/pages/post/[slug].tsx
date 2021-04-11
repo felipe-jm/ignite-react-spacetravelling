@@ -1,17 +1,21 @@
 import { GetStaticPaths, GetStaticProps } from 'next';
+import { useRouter } from 'next/router';
 
 import Head from 'next/head';
 
-import { getPrismicClient } from 'services/prismic';
-
 import Prismic from '@prismicio/client';
+import { RichText } from 'prismic-dom';
 
 import { FiCalendar, FiUser, FiClock } from 'react-icons/fi';
 
 import { format } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
 
-import commonStyles from 'styles/common.module.scss';
+import { getPrismicClient } from '../../services/prismic';
+
+import Header from '../../components/Header';
+
+import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
 
 interface Post {
@@ -36,11 +40,39 @@ interface PostProps {
 }
 
 export default function Post({ post }: PostProps) {
+  const router = useRouter();
+
+  if (router.isFallback) {
+    return <p>Carregando...</p>;
+  }
+
+  function calculateReadingTime() {
+    const bodiesText = post.data.content.reduce(
+      (acc, curr) => `${acc} ${RichText.asText(curr.body)}`,
+      ''
+    );
+
+    const headingsText = post.data.content.reduce(
+      (acc, curr) => `${acc} ${curr.heading}`,
+      ''
+    );
+
+    const fullText = `${bodiesText} ${headingsText}`;
+
+    const totalWords = fullText.split(' ').length;
+
+    const readingTime = Math.ceil(totalWords / 200);
+
+    return readingTime;
+  }
+
   return (
     <>
       <Head>
         <title>{post.data.title} | Ignews</title>
       </Head>
+
+      <Header />
 
       <div>
         <img
@@ -54,22 +86,25 @@ export default function Post({ post }: PostProps) {
             <h1>{post.data.title}</h1>
             <div>
               <time>
-                <FiCalendar /> {post.first_publication_date}
+                <FiCalendar />{' '}
+                {format(new Date(post.first_publication_date), 'd MMM yyyy', {
+                  locale: ptBR,
+                })}
               </time>
               <span>
                 <FiUser /> {post.data.author}
               </span>
               <span>
-                <FiClock /> 4 min
+                <FiClock /> {calculateReadingTime()} min
               </span>
             </div>
 
             <div className={styles.content}>
               {post.data.content.map(content => (
                 <section key={content.heading}>
-                  <h1>{content.heading}</h1>
+                  <h2>{content.heading}</h2>
                   {content.body.map(body => (
-                    <p>{body.text}</p>
+                    <p key={body.text}>{body.text}</p>
                   ))}
                 </section>
               ))}
@@ -105,26 +140,9 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
   const response = await prismic.getByUID('posts', String(slug), {});
 
   const post: Post = {
-    first_publication_date: format(
-      new Date(response.first_publication_date),
-      'd MMM yyyy',
-      {
-        locale: ptBR,
-      }
-    ),
-    data: {
-      title: response.data.title,
-      banner: {
-        url: response.data.banner.url,
-      },
-      author: response.data.author,
-      content: response.data.content.map(content => ({
-        heading: content.heading,
-        body: content.body.map(body => ({
-          text: body.text,
-        })),
-      })),
-    },
+    ...response,
+    data: response.data,
+    first_publication_date: response.first_publication_date,
   };
 
   return {
