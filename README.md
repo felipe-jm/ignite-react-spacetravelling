@@ -14,7 +14,7 @@
 
 - [React.js](https://reactjs.org/)
 - [Next.js](https://nextjs.org)
-- [Primisc](https://prismic.io)
+- [Prismic](https://prismic.io)
 
 ## :information_source: How To Use
 
