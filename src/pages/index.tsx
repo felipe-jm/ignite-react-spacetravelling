@@ -57,13 +57,7 @@ export default function Home({ postsPagination, preview }: HomeProps) {
 
       const formattedResults = parsedResponse.results.map(post => ({
         uid: post.uid,
-        first_publication_date: format(
-          new Date(post.first_publication_date),
-          'd MMM yyyy',
-          {
-            locale: ptBR,
-          }
-        ),
+        first_publication_date: post.first_publication_date,
         data: {
           title: post.data.title,
           subtitle: post.data.subtitle,

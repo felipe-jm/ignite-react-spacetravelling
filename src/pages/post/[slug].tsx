@@ -39,12 +39,19 @@ interface Post {
   };
 }
 
+interface SidePost {
+  uid: string;
+  title: string;
+}
+
 interface PostProps {
   post: Post;
   preview?: boolean;
+  prevPost: SidePost | null;
+  nextPost?: SidePost | null;
 }
 
-export default function Post({ post, preview }: PostProps) {
+export default function Post({ post, preview, prevPost, nextPost }: PostProps) {
   const router = useRouter();
 
   if (router.isFallback) {
@@ -132,6 +139,30 @@ export default function Post({ post, preview }: PostProps) {
               </Link>
             </aside>
           )}
+
+          <div className={styles.sidePosts}>
+            {prevPost ? (
+              <div>
+                <span>{nextPost.title}</span>
+                <Link href={`/post/${nextPost.uid}`}>
+                  <a>Post anterior</a>
+                </Link>
+              </div>
+            ) : (
+              <div />
+            )}
+
+            {nextPost ? (
+              <div className={styles.nextPost}>
+                <span>{nextPost.title}</span>
+                <Link href={`/post/${nextPost.uid}`}>
+                  <a>Próximo post</a>
+                </Link>
+              </div>
+            ) : (
+              <div />
+            )}
+          </div>
         </main>
       </div>
 
@@ -169,9 +200,44 @@ export const getStaticProps: GetStaticProps = async ({
     ref: previewData?.ref ?? null,
   });
 
+  const [prevPost] = (
+    await prismic.query(Prismic.predicates.at('document.type', 'posts'), {
+      fetch: ['posts.uid', 'posts.href', 'posts.title'],
+      pageSize: 1,
+      after: `${response.uid}`,
+      orderings: '[my.post.date desc]',
+    })
+  ).results;
+
+  let formattedPrevPost = null;
+
+  if (prevPost) {
+    formattedPrevPost = {
+      uid: prevPost.uid,
+      title: prevPost.data.title,
+    };
+  }
+
+  const [nextPost] = (
+    await prismic.query(Prismic.predicates.at('document.type', 'posts'), {
+      fetch: ['posts.uid', 'posts.href', 'posts.title'],
+      pageSize: 1,
+      after: `${response.uid}`,
+      orderings: `[my.post.date]`,
+    })
+  ).results;
+
+  let formattedNextPost = null;
+
+  if (nextPost) {
+    formattedNextPost = {
+      uid: nextPost.uid,
+      title: nextPost.data.title,
+    };
+  }
+
   const post: Post = {
     ...response,
-    data: response.data,
     first_publication_date: response.first_publication_date,
     last_publication_date: response.last_publication_date,
   };
@@ -180,6 +246,8 @@ export const getStaticProps: GetStaticProps = async ({
     props: {
       post,
       preview,
+      prevPost: formattedPrevPost,
+      nextPost: formattedNextPost,
     },
   };
 };
