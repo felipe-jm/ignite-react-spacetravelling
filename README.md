@@ -5,7 +5,7 @@
 </h1>
 
 <h4 align="center">
-  A with Next.js + Prismic CMS blog
+  A Next.js + Prismic CMS blog
 </h4>
 
 ![App image](./app.png)
