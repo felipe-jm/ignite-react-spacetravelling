@@ -14,6 +14,7 @@ import ptBR from 'date-fns/locale/pt-BR';
 import { getPrismicClient } from '../../services/prismic';
 
 import Header from '../../components/Header';
+import UtteranceComments from '../../components/UtteranceComments';
 
 import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
@@ -112,6 +113,8 @@ export default function Post({ post }: PostProps) {
           </article>
         </main>
       </div>
+
+      <UtteranceComments />
     </>
   );
 }
